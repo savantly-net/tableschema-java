@@ -83,7 +83,6 @@ public class Reference {
     public final void validate() throws ForeignKeyException{
         if(Objects.isNull(resource) || resource.isEmpty() || Objects.isNull(fields) || fields.isEmpty()){
             throw new ForeignKeyException("A foreign key's reference must have the fields and resource properties.");
-            
         }
     }
     

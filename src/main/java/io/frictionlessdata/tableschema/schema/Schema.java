@@ -200,59 +200,6 @@ public class Schema {
         return fromJson(TypeInferrer.getInstance().infer(data, headers, rowLimit), true);
     }
     
-    
-    /**
-     * Initializes the schema from given stream.
-     * Used for Schema class instantiation with remote or local schema file.
-     * @param inStream the `InputStream` to read and parse the Schema from
-     * @throws Exception when reading fails
-     */
-    /*
-    private void initSchemaFromStream(InputStream inStream) throws IOException {
-        InputStreamReader inputStreamReader = new InputStreamReader(inStream, StandardCharsets.UTF_8);
-        BufferedReader br = new BufferedReader(inputStreamReader);
-        String schemaString = br.lines().collect(Collectors.joining("\n"));
-        inputStreamReader.close();
-        br.close();
-        
-        this.initFromSchemaJson(schemaString);
-    } */
-
-	/*
-    private void initFromSchemaJson(String json) throws PrimaryKeyException, ForeignKeyException{
-    	
-        JsonNode schemaObj = JsonUtil.getInstance().readValue(json);
-        // Set Fields
-        if(schemaObj.has(JSON_KEY_FIELDS)){
-        	TypeReference<List<Field>> fieldsTypeRef = new TypeReference<List<Field>>() {};
-        	String fieldsJson = schemaObj.withArray(JSON_KEY_FIELDS).toString();
-            this.fields.addAll(JsonUtil.getInstance().deserialize(fieldsJson, fieldsTypeRef));
-        }
-        
-        // Set Primary Key
-        if(schemaObj.has(JSON_KEY_PRIMARY_KEY)){
-        	if(schemaObj.get(JSON_KEY_PRIMARY_KEY).isArray()) {
-        		this.setPrimaryKey(schemaObj.withArray(JSON_KEY_PRIMARY_KEY));
-        	} else {
-        		this.setPrimaryKey(schemaObj.get(JSON_KEY_PRIMARY_KEY).asText());
-        	}
-        }
-        
-        // Set Foreign Keys
-        if(schemaObj.has(JSON_KEY_FOREIGN_KEYS)){
-            JsonNode fkJsonArray = schemaObj.withArray(JSON_KEY_FOREIGN_KEYS);
-            fkJsonArray.forEach((f)->{
-                ForeignKey fk = new ForeignKey(f.toString(), this.strictValidation);
-                this.addForeignKey(fk);
-                
-                if(!this.strictValidation){
-                    this.getErrors().addAll(fk.getErrors());
-                } 
-            });
-        }
-    }
-        */
-    
     private void initValidator(){
         // Init for validation
         InputStream tableSchemaInputStream = TypeInferrer.class.getResourceAsStream("/schemas/table-schema.json");
@@ -386,7 +333,8 @@ public class Schema {
         }
         return null;
     }
-    
+
+    @JsonIgnore
     public List<String> getFieldNames(){
         return fields
                 .stream()
@@ -411,17 +359,6 @@ public class Schema {
     public FileReference getReference() {
         return reference;
     }
-    /**
-     * Set single primary key with the option of validation.
-     * @param key
-     * @throws PrimaryKeyException 
-     */
-    /*
-    @JsonFormat(with = {Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY, Feature.WRITE_SINGLE_ELEM_ARRAYS_UNWRAPPED})
-    public void setPrimaryKey(String key) throws PrimaryKeyException{
-        checkKey(key);
-        this.primaryKey = Arrays.asList(key); 
-    } */
 
     private void checkKey(String key) {
         if(!this.hasField(key)){

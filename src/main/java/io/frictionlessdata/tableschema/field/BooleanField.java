@@ -9,9 +9,17 @@ import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class BooleanField extends Field<Boolean> {
-    List<String> trueValues = Arrays.asList("true", "yes", "y", "t", "1");
-    List<String> falseValues = Arrays.asList("false", "no", "n", "f", "0");
+    @JsonIgnore
+    private static final List<String> defaultTrueValues = Arrays.asList("true", "True", "TRUE", "1");
+
+    @JsonIgnore
+    private static final List<String> defaultFalseValues = Arrays.asList("false", "False", "FALSE", "0");
+
+    private List<String> trueValues = null;
+    private List<String> falseValues = null;
 
 
     BooleanField() {
@@ -47,21 +55,28 @@ public class BooleanField extends Field<Boolean> {
             }
         }
 
-        if (trueValues.contains(value.toLowerCase())){
+        if (_getActualTrueValues().contains(value)){
             return true;
 
-        }else if (falseValues.contains(value.toLowerCase())){
+        }else if (_getActualFalseValues().contains(value)){
             return false;
 
         }else{
-            throw new TypeInferringException();
+            throw new InvalidCastException("Value "+value+" not in 'trueValues' or 'falseValues'");
         }
     }
 
     @Override
+    public String formatValueAsString(Boolean value) throws InvalidCastException, ConstraintsException {
+        if (null == value)
+            return null;
+        return (value) ? _getActualTrueValues().get(0) : _getActualFalseValues().get(0);
+    }
+
+    @Override
     public String formatValueAsString(Boolean value, String format, Map<String, Object> options) throws InvalidCastException, ConstraintsException {
-        String trueValue = trueValues.get(0);
-        String falseValue = falseValues.get(0);
+        String trueValue = _getActualTrueValues().get(0);
+        String falseValue = _getActualFalseValues().get(0);
         if (null != options) {
             if (options.containsKey("trueValues")) {
                 trueValue = new ArrayList<String>((Collection) options.get("trueValues")).iterator().next();
@@ -80,5 +95,27 @@ public class BooleanField extends Field<Boolean> {
 
     public static Field fromJson (String json) {
     	return Field.fromJson(json);
+    }
+
+    public List<String> getTrueValues() {
+        return trueValues;
+    }
+
+    public List<String> getFalseValues() {
+        return falseValues;
+    }
+
+    @JsonIgnore
+    private List<String> _getActualTrueValues() {
+        if ((null == trueValues) || (trueValues.isEmpty()))
+            return defaultTrueValues;
+        return trueValues;
+    }
+
+    @JsonIgnore
+    private List<String> _getActualFalseValues() {
+        if ((null == falseValues) || (falseValues.isEmpty()))
+            return defaultFalseValues;
+        return falseValues;
     }
 }

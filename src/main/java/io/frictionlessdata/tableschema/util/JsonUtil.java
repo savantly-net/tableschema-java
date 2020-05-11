@@ -184,5 +184,4 @@ public final class JsonUtil {
 			return defaultExceptionWrapper.apply(ex);
 		}	
 	}
-	
 }

@@ -1,15 +1,11 @@
 package io.frictionlessdata.tableschema.schema;
 
-import io.frictionlessdata.tableschema.Table;
-import io.frictionlessdata.tableschema.TestHelper;
-import io.frictionlessdata.tableschema.beans.EmployeeBean;
-import io.frictionlessdata.tableschema.exception.ForeignKeyException;
-import io.frictionlessdata.tableschema.exception.InvalidCastException;
-import io.frictionlessdata.tableschema.exception.PrimaryKeyException;
-import io.frictionlessdata.tableschema.exception.ValidationException;
-import io.frictionlessdata.tableschema.field.*;
-import io.frictionlessdata.tableschema.fk.ForeignKey;
-import io.frictionlessdata.tableschema.fk.Reference;
+import static io.frictionlessdata.tableschema.TestHelper.getTestDataDirectory;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.math.BigDecimal;
@@ -27,15 +23,16 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-
-import org.joda.time.DateTime;
-
-import static io.frictionlessdata.tableschema.TestHelper.getTestDataDirectory;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import io.frictionlessdata.tableschema.Table;
+import io.frictionlessdata.tableschema.TestHelper;
+import io.frictionlessdata.tableschema.beans.EmployeeBean;
+import io.frictionlessdata.tableschema.exception.ForeignKeyException;
+import io.frictionlessdata.tableschema.exception.InvalidCastException;
+import io.frictionlessdata.tableschema.exception.PrimaryKeyException;
+import io.frictionlessdata.tableschema.exception.ValidationException;
+import io.frictionlessdata.tableschema.field.*;
+import io.frictionlessdata.tableschema.fk.ForeignKey;
+import io.frictionlessdata.tableschema.fk.Reference;
 
 
 /**
@@ -57,21 +54,7 @@ public class SchemaTest {
         Schema validSchema = Schema.fromJson(schemaJson, true);
         Assert.assertTrue(validSchema.isValid());
     }
-    /*
-    @Test
-    public void testCreateSchemaFromInvalidSchemaJson() throws Exception {
-        JSONObject schemaJsonObj = new JSONObject();
 
-        schemaJsonObj.put("fields", new JSONArray());
-        Field nameField = new IntegerField("id");
-        Field invalidField = new Field("coordinates", "invalid");
-        schemaJsonObj.getJSONArray("fields").put(nameField.getJson());
-        schemaJsonObj.getJSONArray("fields").put(invalidField.getJson());
-
-        exception.expect(ValidationException.class);
-        new Schema(schemaJsonObj.toString(), true);
-    }
-*/
 
     @Test
     public void testReadFromInValidSchemaFileWithStrictValidation() throws Exception{
@@ -79,24 +62,6 @@ public class SchemaTest {
         exception.expect(ValidationException.class);
         Schema.fromJson(f, true);
     }
-
-    /*
-    @Test
-    public void testCreateSchemaFromInvalidSchemaJsonWithoutStrictValidation() throws Exception{
-        JSONObject schemaJsonObj = new JSONObject();
-
-        schemaJsonObj.put("fields", new JSONArray());
-        Field nameField = new IntegerField("id");
-        Field invalidField = new Field("coordinates", "invalid");
-        schemaJsonObj.getJSONArray("fields").put(nameField.getJson());
-        schemaJsonObj.getJSONArray("fields").put(invalidField.getJson());
-
-        Schema invalidSchema = new Schema(schemaJsonObj.toString(), false); // strict=false
-
-        Assert.assertEquals(Field.FIELD_TYPE_INTEGER, invalidSchema.getField("id").getType());
-        Assert.assertEquals("invalid", invalidSchema.getField("coordinates").getType());
-
-    }*/
 
     @Test
     public void testIsValid(){
@@ -306,7 +271,7 @@ public class SchemaTest {
         String[] row = new String[]{
             "John Doe", // String
             "25", // Integer
-            "T", // Boolean
+            "true", // Boolean
             "{\"one\": 1, \"two\": 2, \"three\": 3}", // Object
             "[1,2,3,4]", // Array
             "2008-08-30", // Date
@@ -665,6 +630,43 @@ public class SchemaTest {
         }
         assertEquals(expectedSchema, schema);
     }
+
+
+    @Test
+    public void testSaveDefaultBooleanValues() throws Exception{
+        File createdFile = folder.newFile("test_schema.json");
+
+        File f = new File(getTestDataDirectory(), "schema/employee_schema.json");
+        Schema createdSchema = Schema.fromJson(f, true);
+        createdSchema.writeJson(createdFile);
+
+        Schema readSchema = Schema.fromJson (createdFile, true);
+        assertEquals(createdSchema, readSchema);
+
+        assertEquals("true", readSchema.getField("isAdmin").formatValueAsString(true));
+        assertEquals("false", readSchema.getField("isAdmin").formatValueAsString(false));
+        assertEquals("true", createdSchema.getField("isAdmin").formatValueAsString(true));
+        assertEquals("false", createdSchema.getField("isAdmin").formatValueAsString(false));
+    }
+
+
+    @Test
+    public void testSaveAlternateBooleanValues() throws Exception{
+        File createdFile = folder.newFile("test_schema.json");
+
+        File f = new File(getTestDataDirectory(), "schema/employee_schema_boolean_alternative_values.json");
+        Schema createdSchema = Schema.fromJson(f, true);
+        createdSchema.writeJson(createdFile);
+
+        Schema readSchema = Schema.fromJson (createdFile, true);
+        assertEquals(createdSchema, readSchema);
+
+        assertEquals("TRUE", readSchema.getField("isAdmin").formatValueAsString(true));
+        assertEquals("FALSE", readSchema.getField("isAdmin").formatValueAsString(false));
+        assertEquals("TRUE", createdSchema.getField("isAdmin").formatValueAsString(true));
+        assertEquals("FALSE", createdSchema.getField("isAdmin").formatValueAsString(false));
+    }
+
 
     @Test
     public void testIssue20() throws Exception {

@@ -1,18 +1,7 @@
 package io.frictionlessdata.tableschema.field;
 
-import io.frictionlessdata.tableschema.datasourceformat.DataSourceFormat;
-import io.frictionlessdata.tableschema.schema.Schema;
-import io.frictionlessdata.tableschema.Table;
-import io.frictionlessdata.tableschema.TestHelper;
-import io.frictionlessdata.tableschema.exception.InvalidCastException;
-import org.joda.time.DateTime;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
-import javax.ejb.Local;
 import java.io.File;
 import java.io.FileInputStream;
 import java.math.BigDecimal;
@@ -22,7 +11,17 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+
+import io.frictionlessdata.tableschema.Table;
+import io.frictionlessdata.tableschema.TestHelper;
+import io.frictionlessdata.tableschema.datasourceformat.DataSourceFormat;
+import io.frictionlessdata.tableschema.exception.InvalidCastException;
+import io.frictionlessdata.tableschema.schema.Schema;
 
 /**
  *
@@ -329,28 +328,53 @@ class FieldCastTest {
     @Test
     void testFieldCastBoolean() throws Exception{
         BooleanField field = new BooleanField("test");
-
-        Assertions.assertFalse(field.castValue("f"));
-        Assertions.assertFalse(field.castValue("F"));
         Assertions.assertFalse(field.castValue("False"));
         Assertions.assertFalse(field.castValue("false"));
         Assertions.assertFalse(field.castValue("FALSE"));
-        Assertions.assertFalse(field.castValue("0"));
-        Assertions.assertFalse(field.castValue("no"));
-        Assertions.assertFalse(field.castValue("NO"));
-        Assertions.assertFalse(field.castValue("n"));
-        Assertions.assertFalse(field.castValue("N"));
 
-        Assertions.assertTrue(field.castValue("t"));
-        Assertions.assertTrue(field.castValue("T"));
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("f"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("F"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("no"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("NO"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("n"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("N"));
+        });
+
         Assertions.assertTrue(field.castValue("True"));
         Assertions.assertTrue(field.castValue("true"));
         Assertions.assertTrue(field.castValue("TRUE"));
         Assertions.assertTrue(field.castValue("1"));
-        Assertions.assertTrue(field.castValue("yes"));
-        Assertions.assertTrue(field.castValue("YES"));
-        Assertions.assertTrue(field.castValue("y"));
-        Assertions.assertTrue(field.castValue("Y"));
+
+
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("t"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("T"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("yes"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("YES"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("y"));
+        });
+        assertThrows(InvalidCastException.class, () -> {
+            Assertions.assertFalse(field.castValue("Y"));
+        });
     }
 
     @Test

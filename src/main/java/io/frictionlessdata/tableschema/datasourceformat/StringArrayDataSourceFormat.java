@@ -42,12 +42,6 @@ public class StringArrayDataSourceFormat extends AbstractDataSourceFormat {
     }
 
     @Override
-    public void write(File outputFile) throws Exception {
-        CSVFormat format = DataSourceFormat.getDefaultCsvFormat();
-        super.writeCsv(outputFile, format, this.headers);
-    }
-
-    @Override
     public boolean hasReliableHeaders() {
         return headers != null;
     }

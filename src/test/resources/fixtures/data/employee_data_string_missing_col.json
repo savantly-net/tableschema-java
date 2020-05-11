@@ -4,7 +4,6 @@
     "dateOfBirth": "1976-01-13",
     "id": "1",
     "isAdmin": "true",
-    "addressCoordinates": "{\"lon\": 90.123, \"lat\": 45}",
     "contractLength": "P2DT3H4M",
     "info": "{\"ssn\": 90, \"pin\": 45, \"rate\": 83.23}"
   },

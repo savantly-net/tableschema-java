@@ -1,28 +1,21 @@
 package io.frictionlessdata.tableschema.field;
 
-import io.frictionlessdata.tableschema.exception.ConstraintsException;
-import io.frictionlessdata.tableschema.exception.InvalidCastException;
-import io.frictionlessdata.tableschema.exception.TableSchemaException;
-import io.frictionlessdata.tableschema.util.JsonUtil;
+import java.net.URI;
+import java.time.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
-import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.time.Duration;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import io.frictionlessdata.tableschema.exception.ConstraintsException;
+import io.frictionlessdata.tableschema.exception.InvalidCastException;
+import io.frictionlessdata.tableschema.util.JsonUtil;
 
 /**
  * Definition of a field in a data table. Doesn't hold values
@@ -199,6 +192,12 @@ public abstract class Field<T> {
     public abstract String formatValueAsString(T value, String format, Map<String, Object> options)
             throws InvalidCastException, ConstraintsException;
 
+    public String formatValueAsString(T value) throws InvalidCastException, ConstraintsException {
+        if (null == value)
+            return null;
+        return formatValueAsString( value, format, options);
+    }
+
     public Object formatValueForJson(T value) throws InvalidCastException, ConstraintsException {
         return value;
     }
@@ -213,17 +212,6 @@ public abstract class Field<T> {
      */
     public abstract String parseFormat(String value, Map<String, Object> options);
 
-    /**
-     * Use the Field definition to cast a value into the Field type.
-     * Enforces constraints by default.
-     * @param value the value string to cast
-     * @return result of the cast operation
-     * @throws InvalidCastException if the content of `value` cannot be cast to the destination type
-     * @throws ConstraintsException thrown if `enforceConstraints` was set to `true`and constraints were violated
-     */
-    public T castValue(String value) throws InvalidCastException, ConstraintsException{
-        return castValue(value, true, null);
-    }
     
     /**
      * Use the Field definition to cast (=parse) a value into the Field type. Constraints enforcing
@@ -262,6 +250,19 @@ public abstract class Field<T> {
             }
         } 
     }
+
+    /**
+     * Use the Field definition to cast a value into the Field type.
+     * Enforces constraints by default.
+     * @param value the value string to cast
+     * @return result of the cast operation
+     * @throws InvalidCastException if the content of `value` cannot be cast to the destination type
+     * @throws ConstraintsException thrown if `enforceConstraints` was set to `true`and constraints were violated
+     */
+    public T castValue(String value) throws InvalidCastException, ConstraintsException{
+        return castValue(value, true, options);
+    }
+
     
     /**
      * Returns a Map with all the constraints that have been violated.
@@ -341,12 +342,30 @@ public abstract class Field<T> {
                     violatedConstraints.put(CONSTRAINT_KEY_MINIMUM, minInt);
                 }
                 
-            }else if(value instanceof DateTime){
-                DateTime minDateTime = (DateTime)this.constraints.get(CONSTRAINT_KEY_MINIMUM);
-                if(((DateTime)value).isBefore(minDateTime)){
-                    violatedConstraints.put(CONSTRAINT_KEY_MINIMUM, minDateTime);
+            }else if(value instanceof LocalTime){
+                LocalTime minTime = (LocalTime)this.constraints.get(CONSTRAINT_KEY_MINIMUM);
+                if(((LocalTime)value).isBefore(minTime)){
+                    violatedConstraints.put(CONSTRAINT_KEY_MINIMUM, minTime);
                 }
-                
+
+            }else if(value instanceof ZonedDateTime){
+                ZonedDateTime minTime = (ZonedDateTime)this.constraints.get(CONSTRAINT_KEY_MINIMUM);
+                if(((ZonedDateTime)value).isBefore(minTime)){
+                    violatedConstraints.put(CONSTRAINT_KEY_MINIMUM, minTime);
+                }
+
+            }else if(value instanceof LocalDate){
+                LocalDate minDate = (LocalDate)this.constraints.get(CONSTRAINT_KEY_MINIMUM);
+                if(((LocalDate)value).isBefore(minDate)){
+                    violatedConstraints.put(CONSTRAINT_KEY_MINIMUM, minDate);
+                }
+
+            }else if(value instanceof YearMonth){
+                YearMonth minDate = (YearMonth)this.constraints.get(CONSTRAINT_KEY_MINIMUM);
+                if(((YearMonth)value).isBefore(minDate)){
+                    violatedConstraints.put(CONSTRAINT_KEY_MINIMUM, minDate);
+                }
+
             }else if(value instanceof Duration){
                 Duration minDuration = (Duration)this.constraints.get(CONSTRAINT_KEY_MINIMUM);
                 if(((Duration)value).compareTo(minDuration) < 0){
@@ -364,13 +383,34 @@ public abstract class Field<T> {
                     violatedConstraints.put(CONSTRAINT_KEY_MAXIMUM, maxInt);
                 }
                 
-            }else if(value instanceof DateTime){
-                DateTime maxDateTime = (DateTime)this.constraints.get(CONSTRAINT_KEY_MAXIMUM);
-                
-                if(((DateTime)value).isAfter(maxDateTime)){
-                    violatedConstraints.put(CONSTRAINT_KEY_MAXIMUM, maxDateTime);
+            }else if(value instanceof LocalTime){
+                LocalTime maxTime = (LocalTime)this.constraints.get(CONSTRAINT_KEY_MAXIMUM);
+
+                if(((LocalTime)value).isAfter(maxTime)){
+                    violatedConstraints.put(CONSTRAINT_KEY_MAXIMUM, maxTime);
                 }
-                
+
+            }else if(value instanceof ZonedDateTime){
+                ZonedDateTime maxTime = (ZonedDateTime)this.constraints.get(CONSTRAINT_KEY_MAXIMUM);
+
+                if(((ZonedDateTime)value).isAfter(maxTime)){
+                    violatedConstraints.put(CONSTRAINT_KEY_MAXIMUM, maxTime);
+                }
+
+            }else if(value instanceof LocalDate){
+                LocalDate maxDate = (LocalDate)this.constraints.get(CONSTRAINT_KEY_MAXIMUM);
+
+                if(((LocalDate)value).isAfter(maxDate)){
+                    violatedConstraints.put(CONSTRAINT_KEY_MAXIMUM, maxDate);
+                }
+
+            }else if(value instanceof YearMonth){
+                YearMonth maxDate = (YearMonth)this.constraints.get(CONSTRAINT_KEY_MAXIMUM);
+
+                if(((YearMonth)value).isAfter(maxDate)){
+                    violatedConstraints.put(CONSTRAINT_KEY_MAXIMUM, maxDate);
+                }
+
             }else if(value instanceof Duration){
                 Duration maxDuration = (Duration)this.constraints.get(CONSTRAINT_KEY_MAXIMUM);
                 if(((Duration)value).compareTo(maxDuration) > 0){
@@ -424,6 +464,7 @@ public abstract class Field<T> {
                     }
                 }
                 
+
             }else if(value instanceof Integer){
                 List<Integer> intList = (List<Integer>)this.constraints.get(CONSTRAINT_KEY_ENUM);
                 
@@ -435,17 +476,49 @@ public abstract class Field<T> {
                     }
                 }
                 
-            }else if(value instanceof DateTime){
-                List<DateTime> dateTimeList = (List<DateTime>)this.constraints.get(CONSTRAINT_KEY_ENUM);
-                
-                Iterator<DateTime> iter = dateTimeList.iterator();
+            }else if(value instanceof LocalTime){
+                List<LocalTime> timeList = (List<LocalTime>)this.constraints.get(CONSTRAINT_KEY_ENUM);
+
+                Iterator<LocalTime> iter = timeList.iterator();
                 while(iter.hasNext()){
-                    if(iter.next().compareTo((DateTime)value) == 0){
+                    if(iter.next().compareTo((LocalTime)value) == 0){
                         violatesEnumConstraint = false;
                         break;
                     }
                 }
-                
+            }else if(value instanceof ZonedDateTime){
+                List<ZonedDateTime> timeList = (List<ZonedDateTime>)this.constraints.get(CONSTRAINT_KEY_ENUM);
+
+                Iterator<ZonedDateTime> iter = timeList.iterator();
+                while(iter.hasNext()){
+                    if(iter.next().compareTo((ZonedDateTime)value) == 0){
+                        violatesEnumConstraint = false;
+                        break;
+                    }
+                }
+
+            }else if(value instanceof LocalDate){
+                List<LocalDate> dateList = (List<LocalDate>)this.constraints.get(CONSTRAINT_KEY_ENUM);
+
+                Iterator<LocalDate> iter = dateList.iterator();
+                while(iter.hasNext()){
+                    if(iter.next().compareTo((LocalDate)value) == 0){
+                        violatesEnumConstraint = false;
+                        break;
+                    }
+                }
+
+            }else if(value instanceof YearMonth){
+                List<YearMonth> dateTimeList = (List<YearMonth>)this.constraints.get(CONSTRAINT_KEY_ENUM);
+
+                Iterator<YearMonth> iter = dateTimeList.iterator();
+                while(iter.hasNext()){
+                    if(iter.next().compareTo((YearMonth)value) == 0){
+                        violatesEnumConstraint = false;
+                        break;
+                    }
+                }
+
             }else if(value instanceof Duration){
                 List<Duration> durationList = (List<Duration>)this.constraints.get(CONSTRAINT_KEY_ENUM);
                 
