@@ -14,10 +14,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.TreeMap;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-
-
 /**
  * The type inferral algorithm tries to cast to available types and each successful
  * type casting increments a popularity score for the successful type cast in question.

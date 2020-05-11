@@ -277,8 +277,8 @@ class DocumentationCases {
         Field nameField = new StringField("name");
         schema.addField(nameField);
 
-        schema.setPrimaryKey("id");
-        String primaryKey = schema.getPrimaryKey();
+        schema.setPrimaryKey(Arrays.asList("id"));
+        String primaryKey = schema.getPrimaryKey().get(0);
 
         assertEquals("id", primaryKey);
     }
@@ -297,10 +297,10 @@ class DocumentationCases {
         Field surnameField = new StringField("surname");
         schema.addField(surnameField);
 
-        schema.setPrimaryKey(new String[]{"name", "surname"});
-        String[] compositeKey = schema.getPrimaryKey();
+        schema.setPrimaryKey(Arrays.asList("name", "surname"));
+        List<String> compositeKey = schema.getPrimaryKey();
 
-        assertEquals("name", compositeKey[0]);
-        assertEquals("surname", compositeKey[1]);
+        assertEquals("name", compositeKey.get(0));
+        assertEquals("surname", compositeKey.get(1));
     }
 }

@@ -6,12 +6,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.annotation.JsonFormat.Feature;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonFormatTypes;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
 import io.frictionlessdata.tableschema.exception.*;
@@ -20,6 +22,7 @@ import io.frictionlessdata.tableschema.fk.ForeignKey;
 import io.frictionlessdata.tableschema.io.FileReference;
 import io.frictionlessdata.tableschema.io.LocalFileReference;
 import io.frictionlessdata.tableschema.io.URLFileReference;
+import io.frictionlessdata.tableschema.serd.SchemaPrimaryKeyDeserializer;
 import io.frictionlessdata.tableschema.util.JsonUtil;
 
 /**
@@ -28,16 +31,45 @@ import io.frictionlessdata.tableschema.util.JsonUtil;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(value = Include.NON_EMPTY)
+@JsonPropertyOrder({
+    "fields",
+    "primaryKey",
+    "foreignKeys",
+    "missingValues"
+})
 public class Schema {
-    private static final int JSON_INDENT_FACTOR = 4;
-    public static final String JSON_KEY_FIELDS = "fields";
-    public static final String JSON_KEY_PRIMARY_KEY = "primaryKey";
-    public static final String JSON_KEY_FOREIGN_KEYS = "foreignKeys";
     
-    private JsonSchema tableJsonSchema = null;
+    public static final String JSON_KEY_FIELDS = "fields";
+
+	private JsonSchema tableJsonSchema = null;
+
+    /**
+     * An `array` of Table Schema Field objects.
+     * (Required)
+     *
+     */
+    @JsonProperty("fields")
+    @JsonPropertyDescription("An `array` of Table Schema Field objects.")
     private List<Field> fields = new ArrayList();
-    private Object primaryKey = null;
+
+    /**
+     * A primary key is a field name or an array of field names, whose values `MUST` uniquely identify each row in the table.
+     *
+     */
+    @JsonProperty("primaryKey")
+    @JsonPropertyDescription("A primary key is a field name or an array of field names, whose values `MUST` uniquely identify each row in the table.")
+    private List<String> primaryKey = new ArrayList();
+
+    @JsonProperty("foreignKeys")
     private List<ForeignKey> foreignKeys = new ArrayList();
+
+    /**
+     * Values that when encountered in the source, should be considered as `null`, 'not present', or 'blank' values.
+     *
+     */
+    @JsonProperty("missingValues")
+    @JsonPropertyDescription("Values that when encountered in the source, should be considered as `null`, 'not present', or 'blank' values.")
+    private List<String> missingValues = new ArrayList<String>(Arrays.asList(""));
     
     private boolean strictValidation = true;
     private List<Exception> errors = new ArrayList();
@@ -84,8 +116,8 @@ public class Schema {
      * @throws Exception thrown if reading from the stream or parsing throws an exception
      */
     public static Schema fromJson (InputStream inStream, boolean strict) throws IOException {
-        Schema schema = new Schema(strict);
-        schema.initSchemaFromStream(inStream);
+        Schema schema = JsonUtil.getInstance().deserialize(inStream, Schema.class);
+        schema.strictValidation = strict;
         schema.validate();
         return schema;
     }
@@ -168,12 +200,14 @@ public class Schema {
         return fromJson(TypeInferrer.getInstance().infer(data, headers, rowLimit), true);
     }
     
+    
     /**
      * Initializes the schema from given stream.
      * Used for Schema class instantiation with remote or local schema file.
      * @param inStream the `InputStream` to read and parse the Schema from
      * @throws Exception when reading fails
      */
+    /*
     private void initSchemaFromStream(InputStream inStream) throws IOException {
         InputStreamReader inputStreamReader = new InputStreamReader(inStream, StandardCharsets.UTF_8);
         BufferedReader br = new BufferedReader(inputStreamReader);
@@ -182,9 +216,11 @@ public class Schema {
         br.close();
         
         this.initFromSchemaJson(schemaString);
-    }
-    
+    } */
+
+	/*
     private void initFromSchemaJson(String json) throws PrimaryKeyException, ForeignKeyException{
+    	
         JsonNode schemaObj = JsonUtil.getInstance().readValue(json);
         // Set Fields
         if(schemaObj.has(JSON_KEY_FIELDS)){
@@ -215,6 +251,7 @@ public class Schema {
             });
         }
     }
+        */
     
     private void initValidator(){
         // Init for validation
@@ -260,22 +297,15 @@ public class Schema {
     private void validate() throws ValidationException{
         try{
         	String json = this.getJson();
-             this.tableJsonSchema.validate(json);
-             if (null != foreignKeys) {
+             if (Objects.nonNull(foreignKeys)) {
                  for (ForeignKey fk : foreignKeys) {
-                     Object fields = fk.getFields();
-                     if (fields instanceof ArrayNode) {
-                         List<Object> subFields = new ArrayList<>();
-                         ((ArrayNode) fields).elements().forEachRemaining(f->subFields.add(f.asText()));
-                         for (Object subField : subFields) {
-                             validate((String) subField);
-                         }
-                     } else if (fields instanceof String) {
-                         validate((String) fields);
-                     }
+                	 fk.validate(true);
+                     fk.getFields().forEach(f->{
+                    	 validate(f);
+                     });
                  }
              }
-
+             this.tableJsonSchema.validate(json);
         }catch(ValidationException ve){
             if(this.strictValidation){
                 throw ve;
@@ -386,10 +416,12 @@ public class Schema {
      * @param key
      * @throws PrimaryKeyException 
      */
+    /*
+    @JsonFormat(with = {Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY, Feature.WRITE_SINGLE_ELEM_ARRAYS_UNWRAPPED})
     public void setPrimaryKey(String key) throws PrimaryKeyException{
         checkKey(key);
-        this.primaryKey = key; 
-    }
+        this.primaryKey = Arrays.asList(key); 
+    } */
 
     private void checkKey(String key) {
         if(!this.hasField(key)){
@@ -402,52 +434,17 @@ public class Schema {
         }
     }
 
-    public void setPrimaryKey(String[] keys) throws PrimaryKeyException{
-        setPrimaryKey(JsonUtil.getInstance().createArrayNode(keys));
-    }
-    
-    /**
-     * Set composite primary key with the option of validation.
-     * @param compositeKey
-     * @throws PrimaryKeyException 
-     */
-    public void setPrimaryKey(ArrayNode compositeKey) throws PrimaryKeyException{
-        compositeKey.forEach(k->{
-        	checkKey(k.asText());
-        });
-        this.primaryKey = compositeKey;
+    @JsonDeserialize(using = SchemaPrimaryKeyDeserializer.class)
+    public void setPrimaryKey(List<String> keys) throws PrimaryKeyException{
+    	this.primaryKey.clear();
+    	for (String key : keys) {
+    		checkKey(key);
+			this.primaryKey.add(key);
+		}
     }
 
-    @SuppressWarnings("unchecked")
-	public <Any> Any getPrimaryKey(){
-    	if(Objects.isNull(primaryKey)) {
-    		return null;
-    	}
-        if (primaryKey instanceof String)
-            return (Any)primaryKey;
-        if (primaryKey instanceof JsonNode) {
-        	JsonNode jsonNode = (JsonNode)primaryKey;
-        	if(jsonNode.isArray()) {
-        		final List<String> retVal = new ArrayList<>();
-        		jsonNode.forEach(k->retVal.add(k.asText()));
-                return (Any)retVal.toArray(new String[retVal.size()]);
-        	} else {
-        		return (Any)jsonNode.asText();
-        	}
-        };
-        throw new TableSchemaException("Unknown PrimaryKey type: "+primaryKey.getClass());
-    }
-
-    @JsonIgnore
-    public List<String> getPrimaryKeyParts() {
-        if (primaryKey instanceof String)
-            return Arrays.asList((String) primaryKey);
-        if (primaryKey instanceof ArrayNode) {
-            final List<String> retVal = new ArrayList<>();
-            ((ArrayNode)primaryKey).forEach(k->retVal.add(k.asText()));
-            return retVal;
-        }
-        throw new TableSchemaException("Unknown PrimaryKey type: "+primaryKey.getClass());
+	public List<String> getPrimaryKey(){
+    	return this.primaryKey;
     }
 
     public List<ForeignKey> getForeignKeys(){

@@ -19,10 +19,8 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -163,7 +161,7 @@ public class SchemaTest {
         File source = getResourceFile("/fixtures/primarykey/simple_schema_with_valid_pk.json");
         Schema schemaWithValidPK = Schema.fromJson(source, true);
 
-        assertEquals("id", schemaWithValidPK.getPrimaryKey());
+        assertEquals(Arrays.asList("id"), schemaWithValidPK.getPrimaryKey());
     }
 
     @Test
@@ -179,9 +177,9 @@ public class SchemaTest {
         File source = getResourceFile("/fixtures/primarykey/simple_schema_with_valid_ck.json");
         Schema schemaWithValidCK = Schema.fromJson(source, true);
 
-        String[] compositePrimaryKey = schemaWithValidCK.getPrimaryKey();
-        assertEquals("name", compositePrimaryKey[0]);
-        assertEquals("surname", compositePrimaryKey[1]);
+        List<String> compositePrimaryKey = schemaWithValidCK.getPrimaryKey();
+        assertEquals("name", compositePrimaryKey.get(0));
+        assertEquals("surname", compositePrimaryKey.get(1));
 
     }
 
@@ -443,7 +441,7 @@ public class SchemaTest {
         createdSchema.addField(stringField);
 
         // Primary Key
-        createdSchema.setPrimaryKey("id");
+        createdSchema.setPrimaryKey(Arrays.asList("id"));
 
         // Save schema
         createdSchema.writeJson(createdFile);
@@ -451,7 +449,7 @@ public class SchemaTest {
         Schema readSchema = Schema.fromJson (createdFile, true);
 
         // Assert Primary Key
-        assertEquals("id", readSchema.getPrimaryKey());
+        assertEquals(Arrays.asList("id"), readSchema.getPrimaryKey());
     }
 
     @Test
@@ -467,8 +465,8 @@ public class SchemaTest {
         createdSchema.addField(stringField);
 
         // Foreign Keys
-        Reference ref = new Reference(new URL("http://data.okfn.org/data/mydatapackage/"), "resource", "name");
-        ForeignKey fk = new ForeignKey("name", ref, true);
+        Reference ref = new Reference(new URL("http://data.okfn.org/data/mydatapackage/"), "resource", Arrays.asList("name"));
+        ForeignKey fk = new ForeignKey(Arrays.asList("name"), ref, true);
         createdSchema.addForeignKey(fk);
 
         // Save schema
@@ -477,7 +475,7 @@ public class SchemaTest {
         Schema readSchema = Schema.fromJson (createdFile, true);
 
         // Assert Foreign Keys
-        assertEquals("name", readSchema.getForeignKeys().get(0).getFields());
+        assertEquals(Arrays.asList("name"), readSchema.getForeignKeys().get(0).getFields());
         assertEquals("http://data.okfn.org/data/mydatapackage/", readSchema.getForeignKeys().get(0).getReference().getDatapackage().toString());
         assertEquals("resource", readSchema.getForeignKeys().get(0).getReference().getResource());
     }
@@ -489,10 +487,10 @@ public class SchemaTest {
         Field idField = new IntegerField("id");
         schema.addField(idField);
 
-        schema.setPrimaryKey("id");
-        String key = schema.getPrimaryKey();
+        schema.setPrimaryKey(Arrays.asList("id"));
+        List<String> key = schema.getPrimaryKey();
 
-        assertEquals("id", key);
+        assertEquals("id", key.get(0));
     }
 
     @Test
@@ -503,7 +501,7 @@ public class SchemaTest {
         schema.addField(idField);
 
         exception.expect(PrimaryKeyException.class);
-        schema.setPrimaryKey("invalid");
+        schema.setPrimaryKey(Arrays.asList("invalid"));
     }
 
     @Test
@@ -519,11 +517,11 @@ public class SchemaTest {
         Field surnameField = new StringField("surname");
         schema.addField(surnameField);
 
-        schema.setPrimaryKey(new String[]{"name", "surname"});
-        String[] compositeKey = schema.getPrimaryKey();
+        schema.setPrimaryKey(Arrays.asList("name", "surname"));
+        List<String> compositeKey = schema.getPrimaryKey();
 
-        assertEquals("name", compositeKey[0]);
-        assertEquals("surname", compositeKey[1]);
+        assertEquals("name", compositeKey.get(0));
+        assertEquals("surname", compositeKey.get(1));
     }
 
     @Test
@@ -540,7 +538,7 @@ public class SchemaTest {
         schema.addField(surnameField);
 
         exception.expect(PrimaryKeyException.class);
-        schema.setPrimaryKey(new String[]{"name", "invalid"});
+        schema.setPrimaryKey(Arrays.asList("name", "invalid"));
     }
 
     @Test
@@ -556,10 +554,10 @@ public class SchemaTest {
         Field surnameField = new StringField("surname");
         schema.addField(surnameField);
 
-        String[] compositeKey = new String[]{"name", "invalid"};
+        List<String> compositeKey = Arrays.asList("name", "invalid");
         schema.setPrimaryKey(compositeKey); // strict=false
 
-        List<String> fetchedCompositeKey = schema.getPrimaryKeyParts();
+        List<String> fetchedCompositeKey = schema.getPrimaryKey();
         assertEquals("name", fetchedCompositeKey.get(0));
         assertEquals("invalid", fetchedCompositeKey.get(1));
     }
@@ -601,7 +599,7 @@ public class SchemaTest {
         File source = getResourceFile("/fixtures/foreignkeys/schema_invalid_fk_no_reference.json");
 
         exception.expectMessage("A foreign key must have the fields and reference properties.");
-        Schema schema = Schema.fromJson (source, true);
+        Schema.fromJson (source, true);
     }
 
     @Test
@@ -625,13 +623,13 @@ public class SchemaTest {
         File source = getResourceFile("/fixtures/foreignkeys/schema_valid_fk_array.json");
         Schema schema = Schema.fromJson (source, true);
 
-        ArrayNode parsedFields = schema.getForeignKeys().get(0).getFields();
-        assertEquals("id", parsedFields.get(0).asText());
-        assertEquals("title", parsedFields.get(1).asText());
+        List<String> parsedFields = schema.getForeignKeys().get(0).getFields();
+        assertEquals("id", parsedFields.get(0));
+        assertEquals("title", parsedFields.get(1));
 
-        ArrayNode refFields = schema.getForeignKeys().get(0).getReference().getFields();
-        assertEquals("fk_id", refFields.get(0).asText());
-        assertEquals("title_id", refFields.get(1).asText());
+        List<String> refFields = schema.getForeignKeys().get(0).getReference().getFields();
+        assertEquals("fk_id", refFields.get(0));
+        assertEquals("title_id", refFields.get(1));
     }
 
     @Test
@@ -639,9 +637,9 @@ public class SchemaTest {
         File source = getResourceFile("/fixtures/foreignkeys/schema_valid_fk_string.json");
         Schema schema = Schema.fromJson (source, true);
 
-        assertEquals("position_title", schema.getForeignKeys().get(0).getFields());
+        assertEquals(Arrays.asList("position_title"), schema.getForeignKeys().get(0).getFields());
         assertEquals("positions", schema.getForeignKeys().get(0).getReference().getResource());
-        assertEquals("name", schema.getForeignKeys().get(0).getReference().getFields().toString());
+        assertEquals("name", schema.getForeignKeys().get(0).getReference().getFields().get(0));
     }
 
     @Test

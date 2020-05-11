@@ -22,6 +22,6 @@ public class ValidationException extends TableSchemaException {
 	
 	public ValidationException(JsonSchema schema, Collection<ValidationMessage> message) {
 		this(String.format("%s: %s", schema, "validation failed"));
-		this.validationMessages.addAll(validationMessages);
+		this.validationMessages.addAll(message);
 	}
 }

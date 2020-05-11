@@ -3,22 +3,24 @@ package io.frictionlessdata.tableschema.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
+import java.util.function.Function;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 
 import io.frictionlessdata.tableschema.exception.JsonParsingException;
 import io.frictionlessdata.tableschema.exception.JsonSerializingException;
+import io.frictionlessdata.tableschema.exception.TableSchemaException;
+import io.frictionlessdata.tableschema.schema.Schema;
+import io.frictionlessdata.tableschema.serd.LenientBooleanDeserializer;
 
 public final class JsonUtil {
 
@@ -30,9 +32,17 @@ public final class JsonUtil {
 			.enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
 			.enable(JsonParser.Feature.ALLOW_SINGLE_QUOTES)
 			.enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+			.disable(DeserializationFeature.WRAP_EXCEPTIONS)
+			.addModule(customDeserializers())
 			.build();
 	}
 	
+	private Module customDeserializers() {
+		SimpleModule module = new SimpleModule();
+		module.addDeserializer(Boolean.class, new LenientBooleanDeserializer());
+		return module;
+	}
+
 	public static JsonUtil getInstance() {
 		if (Objects.isNull(instance)) {
 			instance = new JsonUtil();
@@ -52,7 +62,9 @@ public final class JsonUtil {
 		try {
 			return mapper.readTree(content);
 		} catch (JsonProcessingException e) {
-			throw new JsonParsingException(e);
+			throw customExceptionOrDefault(e, (t)-> { 
+				return new JsonParsingException(t);
+			});
 		}
 	}
 	
@@ -62,10 +74,14 @@ public final class JsonUtil {
 			try {
 				return mapper.readTree(json);
 			} catch (JsonMappingException e) {
-				throw new JsonParsingException(e);
+				throw customExceptionOrDefault(e, (t)-> { 
+					return new JsonParsingException(t);
+				});
 			} 
 		} catch (JsonProcessingException e) {
-			throw new JsonSerializingException(e);
+			throw customExceptionOrDefault(e, (t)-> { 
+				return new JsonSerializingException(t);
+			});
 		}
 	}
 	
@@ -77,7 +93,9 @@ public final class JsonUtil {
 		try {
 			return (ArrayNode)mapper.readTree(content);
 		} catch (JsonProcessingException e) {
-			throw new JsonParsingException(e);
+			throw customExceptionOrDefault(e, (t)-> { 
+				return new JsonParsingException(t);
+			});
 		}
 	}
 	
@@ -89,7 +107,9 @@ public final class JsonUtil {
 		try {
 			return mapper.writeValueAsString(value);
 		} catch (JsonProcessingException e) {
-			throw new JsonSerializingException(e);
+			throw customExceptionOrDefault(e, (t)-> { 
+				return new JsonSerializingException(t);
+			});
 		}
 	}
 	
@@ -97,7 +117,19 @@ public final class JsonUtil {
 		try {
 			return mapper.readValue(sanitize(value), clazz);
 		} catch (JsonProcessingException e) {
-			throw new JsonParsingException(e);
+			throw customExceptionOrDefault(e, (t)-> { 
+				return new JsonParsingException(t);
+			});
+		}
+	}
+
+	public Schema deserialize(InputStream value, Class<Schema> clazz) {
+		try {
+			return mapper.readValue(value, clazz);
+		} catch (IOException e) {
+			throw customExceptionOrDefault(e, (t)-> { 
+				return new JsonParsingException(t);
+			});
 		}
 	}
 	
@@ -105,7 +137,9 @@ public final class JsonUtil {
 		try {
 			return mapper.readValue(sanitize(value), typeRef);
 		} catch (JsonProcessingException e) {
-			throw new JsonParsingException(e);
+			throw customExceptionOrDefault(e, (t)-> { 
+				return new JsonParsingException(t);
+			});
 		}
 	}
 	
@@ -113,7 +147,9 @@ public final class JsonUtil {
 		try {
 			return mapper.readTree(sanitize(value));
 		} catch (JsonProcessingException e) {
-			throw new JsonParsingException(e);
+			throw customExceptionOrDefault(e, (t)-> { 
+				return new JsonParsingException(t);
+			});
 		}
 	}
 	
@@ -121,7 +157,9 @@ public final class JsonUtil {
 		try {
 			return mapper.readTree(value);
 		} catch (IOException e) {
-			throw new JsonParsingException(e);
+			throw customExceptionOrDefault(e, (t)-> { 
+				return new JsonParsingException(t);
+			});
 		}
 	}
 	
@@ -135,6 +173,16 @@ public final class JsonUtil {
     		// replace both left and right versions
     		return string.replace("“", "\"").replace("”", "\"");
     	} else return string;
+	}
+	
+	private RuntimeException customExceptionOrDefault(Exception ex, Function<Exception, RuntimeException> defaultExceptionWrapper) {
+		if ( Objects.nonNull(ex) && TableSchemaException.class.isAssignableFrom(ex.getClass())){
+			return (TableSchemaException)ex;
+		} else if (Objects.nonNull(ex.getCause()) && TableSchemaException.class.isAssignableFrom(ex.getCause().getClass())) {
+			return (TableSchemaException)ex.getCause();
+		} else {
+			return defaultExceptionWrapper.apply(ex);
+		}	
 	}
 	
 }
